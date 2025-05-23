@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title> IIT YATRA PLAYER</title>
+  <title>IIT YATRA PLAYER</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #ff0000;
@@ -18,28 +19,21 @@
       background: #000;
       font-family: 'Poppins', Arial, sans-serif;
       color: var(--text-color);
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
     }
 
     .player-container {
       position: relative;
+      max-width: 1000px;
+      margin: 20px auto;
       background: #000;
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      width: 90vw;
-      max-width: 960px;
-      aspect-ratio: 16 / 9;
     }
 
-    video {
+    #videoPlayer {
       width: 100%;
-      height: 100%;
-      object-fit: contain;
+      display: block;
       background: #000;
     }
 
@@ -50,14 +44,19 @@
       right: 0;
       background: var(--control-bg);
       padding: 10px;
-      display: flex;
-      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.2s ease;
+    }
+
+    .controls-container.show {
+      transform: translateY(0);
     }
 
     .progress-container {
       width: 100%;
       height: 6px;
       background: rgba(255, 255, 255, 0.2);
+      margin-bottom: 10px;
       cursor: pointer;
     }
 
@@ -65,25 +64,73 @@
       height: 100%;
       background: var(--primary);
       width: 0%;
+      position: relative;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .progress-container:hover .progress-bar::after {
+      opacity: 1;
     }
 
     .main-controls {
       display: flex;
-      justify-content: space-between;
-      margin-top: 10px;
       align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .left-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
     }
 
     .control-btn {
       background: none;
       border: none;
-      color: white;
+      color: var(--text-color);
       font-size: 18px;
       cursor: pointer;
+      padding: 5px;
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .time-display {
+      font-size: 14px;
+    }
+
+    .volume-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
 
     .volume-slider {
       width: 80px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .volume-container:hover .volume-slider {
+      opacity: 1;
     }
 
     .settings-menu {
@@ -94,183 +141,615 @@
       position: absolute;
       bottom: 40px;
       right: 0;
-      background: #222;
-      border-radius: 6px;
-      padding: 10px;
+      background: var(--control-bg);
+      border-radius: 8px;
+      padding: 0;
       display: none;
-      z-index: 10;
-      min-width: 160px;
+      min-width: 200px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      overflow: hidden;
     }
 
     .settings-options.show {
       display: block;
     }
 
+    .settings-header {
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      font-weight: 600;
+      font-size: 16px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .settings-section {
+      padding: 10px 0;
+    }
+
+    .settings-title {
+      padding: 10px 15px 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 5px;
+    }
+
     .settings-option {
-      padding: 8px;
+      padding: 12px 20px;
       cursor: pointer;
-      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      transition: background 0.2s;
     }
 
     .settings-option:hover {
       background: rgba(255, 255, 255, 0.1);
     }
 
+    .settings-option.active {
+      color: var(--primary);
+      background: rgba(255, 0, 0, 0.1);
+    }
+
+    .settings-option .checkmark {
+      display: none;
+      font-size: 16px;
+    }
+
+    .settings-option.active .checkmark {
+      display: inline;
+    }
+
+    .settings-category {
+      font-weight: 500;
+      position: relative;
+    }
+
+    .settings-category:after {
+      content: '';
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid rgba(255, 255, 255, 0.6);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+      transform: translateY(-50%) rotate(-45deg);
+    }
+
+    .back-option {
+      background: rgba(255, 255, 255, 0.05);
+      font-weight: 500;
+      margin-bottom: 5px;
+    }
+
+    .back-option:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
     .site-watermark {
-      color: rgba(255,255,255,0.7);
-      font-size: 13px;
-      margin-top: 15px;
-      text-align: center;
+      position: fixed;
+      bottom: 10px;
+      right: 15px;
+      font-size: 15px;
+      font-family: 'Poppins', sans-serif;
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(40, 40, 40, 0.5);
+      padding: 6px 14px;
+      border-radius: 10px;
+      pointer-events: none;
+      z-index: 9999;
+      user-select: none;
+      backdrop-filter: blur(5px);
+    }
+
+    @media (orientation: portrait) {
+      .player-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90vw;
+        height: calc(90vw * 4 / 7);
+        max-width: 95vw;
+        max-height: 90vh;
+      }
+    }
+
+    #videoPlayer {
+      border: 1px solid #ffffff;
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     .top-bar {
       position: fixed;
       top: 0;
       left: 0;
-      right: 0;
+      width: 100%;
       height: 60px;
       background: linear-gradient(90deg, #141e30, #000);
       color: #fff;
       display: flex;
       align-items: center;
-      padding: 0 20px;
-      font-size: 18px;
-      font-weight: bold;
+      justify-content: space-between;
+      padding: 0 25px;
+      z-index: 1000;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      z-index: 999;
     }
 
-    video:fullscreen {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+    .logo {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* Center player-container when not in fullscreen */
+    body:not(:fullscreen) {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    body:not(:fullscreen):not(:-webkit-full-screen) {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
   </style>
 </head>
 <body>
-  <div class="top-bar"> IIT YATRA PLAYER</div>
-
   <div class="player-container">
-    <video id="videoPlayer" controls></video>
+    <div class="loading-spinner"></div>
+    <video id="videoPlayer"></video>
+
     <div class="controls-container">
       <div class="progress-container">
         <div class="progress-bar"></div>
       </div>
+
       <div class="main-controls">
-        <div>
+        <div class="left-controls">
           <button class="control-btn play-btn">▶</button>
-          <button class="control-btn mute-btn">🔊</button>
-          <input type="range" class="volume-slider" min="0" max="1" step="0.01" value="1">
-        </div>
-        <div class="settings-menu">
-          <button class="control-btn settings-btn">⚙️</button>
-          <div class="settings-options">
-            <div class="settings-option" data-speed="0.5">Speed 0.5x</div>
-            <div class="settings-option" data-speed="1">Speed 1x</div>
-            <div class="settings-option" data-speed="1.5">Speed 1.5x</div>
-            <div class="settings-option" data-speed="2">Speed 2x</div>
+          <button class="control-btn mute-btn">📢</button>
+          <div class="volume-container">
+            <input type="range" class="volume-slider" min="0" max="1" step="0.01" value="1">
           </div>
+          <div class="time-display">00:00 / 00:00</div>
         </div>
-        <button class="control-btn fullscreen-btn">⛶</button>
+
+        <div class="right-controls">
+          <div class="settings-menu">
+            <button class="control-btn settings-btn">⚙️</button>
+            <div class="settings-options">
+              <div class="settings-header">Settings</div>
+              
+              <div class="settings-section main-options">
+                <div class="settings-option settings-category" data-category="speed">
+                  <span>Speed</span>
+                  <span>›</span>
+                </div>
+                <div class="settings-option settings-category" data-category="quality">
+                  <span>Quality</span>
+                  <span>›</span>
+                </div>
+              </div>
+
+              <!-- Speed Options (hidden by default) -->
+              <div class="settings-section speed-options" style="display: none;">
+                <div class="settings-option back-option" data-back="main">
+                  <span>‹ Back to Settings</span>
+                </div>
+                <div class="settings-title">Playback Speed</div>
+                <div class="settings-option" data-speed="0.5">
+                  <span>0.5x</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-speed="0.75">
+                  <span>0.75x</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option active" data-speed="1">
+                  <span>1x (Normal)</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-speed="1.25">
+                  <span>1.25x</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-speed="1.5">
+                  <span>1.5x</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-speed="2">
+                  <span>2x</span>
+                  <span class="checkmark">✓</span>
+                </div>
+              </div>
+
+              <!-- Quality Options (hidden by default) -->
+              <div class="settings-section quality-options" style="display: none;">
+                <div class="settings-option back-option" data-back="main">
+                  <span>‹ Back to Settings</span>
+                </div>
+                <div class="settings-title">Quality</div>
+                <div class="settings-option active" data-quality="auto">
+                  <span>Auto</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-quality="240">
+                  <span>240p</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-quality="360">
+                  <span>360p</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-quality="480">
+                  <span>480p</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-quality="720">
+                  <span>720p</span>
+                  <span class="checkmark">✓</span>
+                </div>
+                <div class="settings-option" data-quality="1080">
+                  <span>1080p</span>
+                  <span class="checkmark">✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="control-btn fullscreen-btn">⛶</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="site-watermark">
-    <p>made by mithilesh kmwt</p>
-    <p>contact: mithileshkmwt@gmail.com</p>
+  <div class="site-watermark"> <p1>made by mithilesh kmwt</p1>
+  <br>
+  <p2>contact: mithileshkmwt@gmail.com</p2></div>
+  <div class="top-bar">
+    <div class="logo">IIT YATRA PLAYER</div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
-    const video = document.getElementById('videoPlayer');
-    const playBtn = document.querySelector('.play-btn');
-    const muteBtn = document.querySelector('.mute-btn');
-    const volumeSlider = document.querySelector('.volume-slider');
-    const progressBar = document.querySelector('.progress-bar');
-    const settingsBtn = document.querySelector('.settings-btn');
-    const settingsOptions = document.querySelector('.settings-options');
-    const fullscreenBtn = document.querySelector('.fullscreen-btn');
-    const progressContainer = document.querySelector('.progress-container');
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const videoURL = decodeURIComponent(urlParams.get('videoURL') || '');
-
-    if (!videoURL) {
-      alert('Missing videoURL parameter! Example: ?videoURL=ENCODED_STREAM_URL');
-    } else {
-      if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(videoURL);
-        hls.attachMedia(video);
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = videoURL;
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const videoURL = urlParams.get('videoURL');
+      if (!videoURL) {
+        alert('Missing videoURL parameter! Example: ?videoURL=ENCODED_STREAM_URL');
+        return;
       }
-    }
 
-    playBtn.addEventListener('click', () => {
-      if (video.paused) {
-        video.play();
-        playBtn.textContent = '❚❚';
-      } else {
-        video.pause();
-        playBtn.textContent = '▶';
+      const decodedURL = decodeURIComponent(videoURL);
+      const videoPlayer = document.getElementById('videoPlayer');
+      const spinner = document.querySelector('.loading-spinner');
+      const playBtn = document.querySelector('.play-btn');
+      const muteBtn = document.querySelector('.mute-btn');
+      const volumeSlider = document.querySelector('.volume-slider');
+      const progressBar = document.querySelector('.progress-bar');
+      const progressContainer = document.querySelector('.progress-container');
+      const timeDisplay = document.querySelector('.time-display');
+      const settingsBtn = document.querySelector('.settings-btn');
+      const settingsOptions = document.querySelector('.settings-options');
+      const fullscreenBtn = document.querySelector('.fullscreen-btn');
+      const playerContainer = document.querySelector('.player-container');
+      const controlsContainer = document.querySelector('.controls-container');
+
+      let hls;
+      let qualityLevels = [];
+      let savedQuality = 'auto';
+      let savedSpeed = parseFloat('1') || 1;
+      let controlsVisible = false;
+
+      // Load saved preferences
+      if (typeof(Storage) !== "undefined") {
+        savedQuality = localStorage.getItem('hlsQualityPreference') || 'auto';
+        savedSpeed = parseFloat(localStorage.getItem('hlsSpeedPreference')) || 1;
       }
-    });
 
-    muteBtn.addEventListener('click', () => {
-      video.muted = !video.muted;
-      muteBtn.textContent = video.muted ? '🔇' : '🔊';
-    });
+      spinner.style.display = 'block';
 
-    volumeSlider.addEventListener('input', () => {
-      video.volume = volumeSlider.value;
-      video.muted = volumeSlider.value == 0;
-      muteBtn.textContent = video.muted ? '🔇' : '🔊';
-    });
+      function initializePlayer() {
+        if (Hls.isSupported()) {
+          hls = new Hls({ enableWorker: true, startLevel: getSavedQualityLevel() });
+          hls.loadSource(decodedURL);
+          hls.attachMedia(videoPlayer);
+          hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+            spinner.style.display = 'none';
+            qualityLevels = data.levels;
+            populateQualityOptions();
+            setInitialSettings();
+          });
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+          spinner.style.display = 'none';
+          videoPlayer.src = decodedURL;
+          setInitialSettings();
+        } else {
+          alert('This browser does not support HLS streaming');
+        }
+      }
 
-    video.addEventListener('timeupdate', () => {
-      const progress = (video.currentTime / video.duration) * 100;
-      progressBar.style.width = progress + '%';
-    });
+      function getSavedQualityLevel() {
+        if (savedQuality === 'auto') return -1;
+        
+        // Find the closest matching quality level
+        const targetHeight = parseInt(savedQuality);
+        let closestLevel = -1;
+        let minDiff = Infinity;
+        
+        qualityLevels.forEach((level, index) => {
+          const diff = Math.abs(level.height - targetHeight);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestLevel = index;
+          }
+        });
+        
+        return closestLevel;
+      }
 
-    progressContainer.addEventListener('click', (e) => {
-      const percent = e.offsetX / progressContainer.offsetWidth;
-      video.currentTime = percent * video.duration;
-    });
+      function populateQualityOptions() {
+        const qualitySection = document.querySelector('.quality-options');
+        
+        // Remove existing quality options except "Auto" and standard options
+        const optionsToKeep = ['auto', '240', '360', '480', '720', '1080'];
+        const existingOptions = qualitySection.querySelectorAll('[data-quality]');
+        
+        existingOptions.forEach(option => {
+          if (!optionsToKeep.includes(option.dataset.quality)) {
+            option.remove();
+          }
+        });
+        
+        // Add available quality levels from the manifest
+        qualityLevels.forEach((level, index) => {
+          const height = level.height;
+          // Skip if we already have this option
+          if (!qualitySection.querySelector(`[data-quality="${height}"]`) && 
+              !qualitySection.querySelector(`[data-quality="${index}"]`)) {
+            const option = document.createElement('div');
+            option.className = 'settings-option';
+            option.dataset.quality = height;
+            option.innerHTML = `<span>${height}p</span><span class="checkmark">✓</span>`;
+            if (height.toString() === savedQuality) {
+              option.classList.add('active');
+              document.querySelector('[data-quality="auto"]').classList.remove('active');
+            }
+            option.addEventListener('click', function() {
+              setQualityLevel(this.dataset.quality);
+            });
+            qualitySection.appendChild(option);
+          }
+        });
+      }
 
-    settingsBtn.addEventListener('click', () => {
-      settingsOptions.classList.toggle('show');
-    });
+      function setInitialSettings() {
+        // Set initial speed
+        videoPlayer.playbackRate = savedSpeed;
+        updateSpeedSelection(savedSpeed);
+        
+        // Set initial quality
+        if (hls) hls.currentLevel = getSavedQualityLevel();
+        updateQualitySelection(savedQuality);
+      }
 
-    document.querySelectorAll('.settings-option').forEach(option => {
-      option.addEventListener('click', () => {
-        const speed = parseFloat(option.dataset.speed);
-        video.playbackRate = speed;
-        settingsOptions.classList.remove('show');
+      function updateSpeedSelection(speed) {
+        document.querySelectorAll('[data-speed]').forEach(opt => opt.classList.remove('active'));
+        const activeSpeedOption = document.querySelector(`[data-speed="${speed}"]`);
+        if (activeSpeedOption) activeSpeedOption.classList.add('active');
+      }
+
+      function updateQualitySelection(quality) {
+        document.querySelectorAll('[data-quality]').forEach(opt => opt.classList.remove('active'));
+        const activeQualityOption = document.querySelector(`[data-quality="${quality}"]`);
+        if (activeQualityOption) activeQualityOption.classList.add('active');
+      }
+
+      function setPlaybackSpeed(speed) {
+        videoPlayer.playbackRate = parseFloat(speed);
+        savedSpeed = parseFloat(speed);
+        updateSpeedSelection(speed);
+        if (typeof(Storage) !== "undefined") {
+          localStorage.setItem('hlsSpeedPreference', speed);
+        }
+      }
+
+      function setQualityLevel(level) {
+        savedQuality = level;
+        updateQualitySelection(level);
+        if (typeof(Storage) !== "undefined") {
+          localStorage.setItem('hlsQualityPreference', level);
+        }
+        if (hls) hls.currentLevel = level === 'auto' ? -1 : getSavedQualityLevel();
+      }
+
+      // Navigation between settings menus
+      document.querySelectorAll('.settings-category').forEach(category => {
+        category.addEventListener('click', function() {
+          const categoryName = this.dataset.category;
+          document.querySelector('.main-options').style.display = 'none';
+          document.querySelector(`.${categoryName}-options`).style.display = 'block';
+        });
       });
-    });
 
-    fullscreenBtn.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        video.requestFullscreen?.();
-        screen.orientation?.lock?.('landscape').catch(() => {});
-      } else {
-        document.exitFullscreen?.();
-        screen.orientation?.unlock?.();
-      }
-    });
+      document.querySelectorAll('.back-option').forEach(backBtn => {
+        backBtn.addEventListener('click', function() {
+          document.querySelector('.speed-options').style.display = 'none';
+          document.querySelector('.quality-options').style.display = 'none';
+          document.querySelector('.main-options').style.display = 'block';
+        });
+      });
 
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement) {
-        settingsOptions.classList.remove('show');
-      }
-    });
+      // Event listeners for speed options
+      document.querySelectorAll('[data-speed]').forEach(option => {
+        if (option.dataset.speed) {
+          option.addEventListener('click', function() {
+            setPlaybackSpeed(this.dataset.speed);
+          });
+        }
+      });
 
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.settings-menu')) {
-        settingsOptions.classList.remove('show');
+      // Event listeners for quality options
+      document.querySelectorAll('[data-quality]').forEach(option => {
+        option.addEventListener('click', function() {
+          setQualityLevel(this.dataset.quality);
+        });
+      });
+
+      playBtn.addEventListener('click', function() {
+        if (videoPlayer.paused) {
+          videoPlayer.play();
+          this.textContent = '❚❚';
+        } else {
+          videoPlayer.pause();
+          this.textContent = '▶';
+        }
+      });
+
+      muteBtn.addEventListener('click', function() {
+        videoPlayer.muted = !videoPlayer.muted;
+        this.textContent = videoPlayer.muted ? '🔇' : '📢';
+      });
+
+      volumeSlider.addEventListener('input', function() {
+        videoPlayer.volume = this.value;
+        videoPlayer.muted = this.value == 0;
+        muteBtn.textContent = this.value == 0 ? '🔇' : '📢';
+      });
+
+      videoPlayer.addEventListener('timeupdate', function() {
+        const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+        progressBar.style.width = `${percent}%`;
+        updateTimeDisplay(videoPlayer.currentTime, videoPlayer.duration);
+      });
+
+      progressContainer.addEventListener('click', function(e) {
+        const percent = e.offsetX / this.offsetWidth;
+        videoPlayer.currentTime = percent * videoPlayer.duration;
+      });
+
+      settingsBtn.addEventListener('click', function() {
+        settingsOptions.classList.toggle('show');
+        // Reset to main menu when opening settings
+        if (settingsOptions.classList.contains('show')) {
+          document.querySelector('.speed-options').style.display = 'none';
+          document.querySelector('.quality-options').style.display = 'none';
+          document.querySelector('.main-options').style.display = 'block';
+        }
+      });
+
+      fullscreenBtn.addEventListener('click', function() {
+        if (!isFullscreen()) {
+          requestFullscreen(playerContainer);
+          screen.orientation?.lock?.('landscape').catch(() => {});
+        } else {
+          exitFullscreen();
+          screen.orientation?.unlock?.();
+        }
+      });
+
+      document.addEventListener('fullscreenchange', () => {
+        videoPlayer.style.objectFit = isFullscreen() ? 'contain' : '';
+        updateFullscreenIcon();
+      });
+      document.addEventListener('webkitfullscreenchange', () => {
+        videoPlayer.style.objectFit = isFullscreen() ? 'contain' : '';
+        updateFullscreenIcon();
+      });
+      document.addEventListener('mozfullscreenchange', () => {
+        videoPlayer.style.objectFit = isFullscreen() ? 'contain' : '';
+        updateFullscreenIcon();
+      });
+      document.addEventListener('MSFullscreenChange', () => {
+        videoPlayer.style.objectFit = isFullscreen() ? 'contain' : '';
+        updateFullscreenIcon();
+      });
+
+      videoPlayer.addEventListener('waiting', () => spinner.style.display = 'block');
+      videoPlayer.addEventListener('playing', () => spinner.style.display = 'none');
+
+      document.addEventListener('click', e => {
+        if (!e.target.closest('.settings-menu')) {
+          settingsOptions.classList.remove('show');
+        }
+      });
+
+      playerContainer.addEventListener('click', function(e) {
+        if (!e.target.closest('.control-btn') && !e.target.closest('.settings-options')) {
+          controlsVisible = !controlsVisible;
+          controlsContainer.classList.toggle('show', controlsVisible);
+        }
+      });
+
+      function updateTimeDisplay(current, duration) {
+        const format = t => `${Math.floor(t / 60)}:${Math.floor(t % 60).toString().padStart(2, '0')}`;
+        timeDisplay.textContent = `${format(current)} / ${format(duration)}`;
       }
+
+      function isFullscreen() {
+        return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      }
+
+      function requestFullscreen(element) {
+        if (element.requestFullscreen) {
+          element.requestFullscreen();
+        } else if (element.webkitRequestFullscreen) {
+          element.webkitRequestFullscreen();
+        } else if (element.mozRequestFullScreen) {
+          element.mozRequestFullScreen();
+        } else if (element.msRequestFullscreen) {
+          element.msRequestFullscreen();
+        }
+      }
+
+      function exitFullscreen() {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+
+      function updateFullscreenIcon() {
+        fullscreenBtn.textContent = isFullscreen() ? '🡽' : '⛶';
+      }
+
+      initializePlayer();
     });
   </script>
 </body>
